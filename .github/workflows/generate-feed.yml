@@ -1,60 +1,39 @@
-name: Generate Feeds
+name: Generate Feed
 
 on:
   workflow_dispatch:
   schedule:
-    # All feeds (tweets, podcasts, blogs): once daily at 6am UTC
-    - cron: '0 6 * * *'
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'What to fetch'
-        required: false
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - tweets-only
-          - podcasts-only
-          - blogs-only
+    - cron: "0 0 * * *"
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
-
+      
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
+          node-version: 20
+          
       - name: Install dependencies
         run: cd scripts && npm install
-
-      - name: Generate feeds
-        env:
-          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-          POD2TXT_API_KEY: ${{ secrets.POD2TXT_API_KEY }}
+        
+      - name: Generate feed
+        run: node scripts/index.js
+        
+      - name: Commit and push if changed
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" != "all" ]; then
-            cd scripts && node generate-feed.js --${{ inputs.mode }}
-          else
-            cd scripts && node generate-feed.js
-          fi
-
-      - name: Commit and push feeds
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add feed-x.json feed-podcasts.json feed-blogs.json state-feed.json
-          git diff --cached --quiet || git commit -m "chore: update feeds [skip ci]"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: update feeds [skip ci]" || exit 0
           git push
+          
       - name: Send to Feishu
         run: |
-          # 获取生成的 README 内容的前 500 字并发送
+          # 提取 README 前 500 字并转义为 JSON 字符串
           CONTENT=$(head -c 500 README.md | python3 -c "import json, sys; print(json.dumps(sys.stdin.read()))")
           curl -X POST "${{ secrets.FEISHUWEBHOOK }}" \
           -H "Content-Type: application/json" \
