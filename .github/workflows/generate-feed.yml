@@ -51,3 +51,24 @@ jobs:
           git add feed-x.json feed-podcasts.json feed-blogs.json state-feed.json
           git diff --cached --quiet || git commit -m "chore: update feeds [skip ci]"
           git push
+
+- name: Send to Feishu
+        run: |
+          # 获取生成的 README 内容的前 500 字并发送
+          CONTENT=$(head -c 500 README.md | python3 -c "import json, sys; print(json.dumps(sys.stdin.read()))")
+          curl -X POST "${{ secrets.FEISHUWEBHOOK }}" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"msg_type\": \"post\",
+            \"content\": {
+              \"post\": {
+                \"zh_cn\": {
+                  \"title\": \"🚀 AI 开发者日报更新啦\",
+                  \"content\": [
+                    [{\"tag\": \"text\", \"text\": $CONTENT}],
+                    [{\"tag\": \"a\", \"text\": \"点击查看完整内容\", \"href\": \"https://github.com/${{ github.repository }}\"}]
+                  ]
+                }
+              }
+            }
+          }"
