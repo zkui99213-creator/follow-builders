@@ -52,7 +52,7 @@ jobs:
           git add feed-x.json feed-podcasts.json feed-blogs.json state-feed.json
           git diff --cached --quiet || git commit -m "chore: update feeds [skip ci]"
           git push
-- name: Send to Feishu
+      - name: Send to Feishu
         run: |
           # 获取生成的 README 内容的前 500 字并发送
           CONTENT=$(head -c 500 README.md | python3 -c "import json, sys; print(json.dumps(sys.stdin.read()))")
